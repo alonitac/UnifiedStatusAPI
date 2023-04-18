@@ -1,5 +1,16 @@
-class Service:
+class Target:
+    def __init__(self):
+        self.endpoint = None
+
+
+class RestTarget:
     pass
 
 
-class
+class RSSTarget:
+    pass
+
+
+class HTMLTarget:
+    pass
+

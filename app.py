@@ -10,13 +10,5 @@ def get_status():
     return jsonify(status)
 
 
-@app.route('/api/alert', methods=['POST'])
-def post_alert():
-    # code to receive and process alerts from monitoring systems
-    alert = request.get_json()
-    # send alert notification to appropriate channels (e.g. email, Slack, PagerDuty)
-    return jsonify({'message': 'Alert received'})
-
-
 if __name__ == '__main__':
     app.run(debug=True)
