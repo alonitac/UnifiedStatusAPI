@@ -3,14 +3,14 @@ class Target:
         self.endpoint = None
 
 
-class RestTarget:
+class RestTarget(Target):
     pass
 
 
-class RSSTarget:
+class RSSTarget(Target):
     pass
 
 
-class HTMLTarget:
+class HTMLTarget(Target):
     pass
 

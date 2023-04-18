@@ -44,9 +44,46 @@ A unified API provides a standard and consistent way to access the availability 
 In addition, a unified API can help to reduce the risk of errors and inconsistencies that can occur when using multiple APIs with varying formats and protocols. 
 By standardizing the API format, DevOps teams can reduce the complexity of their monitoring and management systems, making it easier to maintain and troubleshoot.
 
+## System higher-level design and specifications  
+
 Here is the higher level diagram of the system design:
 
 ![]()
+
+
+You should implement 2 microservices:
+
+### Data Collector
+
+The data collector is a service that is responsible for periodically retrieving the status of public services and storing it in a database for later retrieval.
+The service runs continuously in the background, waking up at predetermined intervals to retrieve the status of services using the public services API. 
+The retrieved data is then stored in a database, such as MongoDB. This allows the status of public services to be monitored and analyzed over time.
+
+Implement this service in `data_collector.py`. 
+The general usage command is:
+
+```bash
+python data_collector.py <periodicity> 
+```
+
+While periodicity is the time interval between every data retrieval.   
+
+Here is an example of usage:
+
+```bash
+python data_collector.py 60
+```
+
+The above run would collect data from targets every 60 seconds. Try to avoid short intervals, you don't want to meet the API limit of some target and get banned.  
+
+The data collector service should [terminate gracefully](https://stackoverflow.com/questions/18499497/how-to-process-sigterm-signal-gracefully)!
+Upon a SIGINT or SIGTERM signals that will be sent to the `data_collector.py` process, the app will close connection to the db, and will stop collect data from targets. The app should exit with code 0.  
+
+### Unified API server 
+
+The Flask-based unified API server is a web application that serves the collected data in a unified scheme.
+The server provides endpoints for retrieving the status of all targets, and status by specific target.
+The server interacts with the database to retrieve the stored status data and return it in the response to incoming requests.
 
 ## Code design
 
@@ -65,9 +102,17 @@ classDiagram
     RSSTarget <|-- GCP
 ```
 
+Feel free to decide your class atributes, to ad mote classes etc
+
 ## Implementation guideline 
 
+You are high encouraged to choose (and extend) the design implementation details. 
+Choosing the database that you'll work with, add more Python modules and classes, use any library you want. 
+But ensuring that the **data scheme** and **class structure** remain the same as described here.
+
 ### Get all endpoint 
+
+This endpoint return the status of all monitored targets.
 
 ```http
 GET /api/status
@@ -109,16 +154,12 @@ GET /api/status
     - status (string): The current status of the service (allowed values are "OK", "Degraded", "Outage", "Unknown").
     - dimensions (object): An object containing additional information about the service (e.g. region, version).
 
-#### Example
-
-Request
+Example request and response
 
 ```http
 GET /api/status HTTP/1.1
 Host: localhost:8080
 ```
-
-Response
 
 ```json
 {
@@ -184,17 +225,53 @@ Response
 
 ### Get by target and service
 
+This endpoint return the status of certain target and (optionally) a service. 
+
 ```http
 GET /api/status/{target}/{service}
 ```
 
-### Get by status
+#### Parameters
 
-```http
-GET /api/status?status=<down>
+- target (string, required): The name of the target to retrieve the status for.
+- service (string, optional): The name of the service to retrieve the status for.
+
+### Response
+
+Returns the status of the specified target and service, if provided.
+
+```json
+[
+  {
+    "target": "github",
+    "service": "pages",
+    "lastTimestamp": "2022-05-01T10:15:30Z",
+    "status": "OK",
+    "dimensions": {
+      "region": "us-east-1"
+    }
+  }
+]
+```
+
+Response Parameters are the same as the above endpoint. 
+
+#### Error Codes and Messages
+
+**404 Not Found**: Returned when the specified target does not exist.
+
+```
+{
+  "error": {
+    "code": "TargetNotFound",
+    "message": "The specified target does not exist."
+  }
+}
 ```
 
 ### (Optional) Display results in Grafana
+
+If the DB in which you store the data is supported by Grafana's built-in data sources, you can create a visualization of your data.
 
 1. Run Grafana server in a Docker container by
    ```shell
@@ -202,22 +279,13 @@ GET /api/status?status=<down>
    ```
 2. After initialization, visit you server in [http://localhost:3000](http://localhost:3000).
 3. Default username and password is `admin`.
-4. Now we want to integrate InfluxDB as a data source in Grafana. On the left menu, under **Configuration** button, click **Data sources**.
-5. In the opened configuration console, choose **Add data source**, then choose **InfluxDB**.
-6. In the data source setting page, under **HTTP** section **URL** field, enter influxDB url: `http://localhost:8086`.
-7. In **Auth** section, turn on the **Basic auth** toggle, and enter the InflucDB username (`admin`) and password (`12345678`) in the appropriate fields below.
-8. In **InfluxDB Details** section, under **Database** enter your db name: `hosts_metrics`.
-9. Finally, click **Save & Test**, and make sure you get the _Data source is working_ message.
-10. Click **Explore**
-11. In the exploration panel, build a graph of the test results over time. Your graph should look similar to the bellow screenshot.   
-    ![availabilityMonitor](../.img/availabilityMonitor.png)
-
-
-## (Optional) Extensions
-
-Store the data in a database
-
-create an endpoints for incidents 
+4. Integrate your DB as a [data source in Grafana](https://grafana.com/docs/grafana/latest/datasources/#built-in-core-data-sources). On the left menu, under **Configuration** button, click **Data sources**.
+5. In the opened configuration console, choose **Add data source**, then choose your DB.
+6. Fill in the relevant fields. 
+7. Finally, click **Save & Test**, and make sure you get the _Data source is working_ message.
+8. Click **Explore**
+9. In the exploration panel, build a graph of the test results over time. Your graph should look similar to the bellow screenshot.   
+   ![availabilityMonitor](../.img/availabilityMonitor.png)
 
 
 ## Submission 

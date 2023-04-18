@@ -2,6 +2,10 @@ import time
 
 is_terminated = False
 
+targets = [
+
+]
+
 
 def termination_handler():
     global is_terminated
