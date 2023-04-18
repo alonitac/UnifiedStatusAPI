@@ -48,7 +48,7 @@ By standardizing the API format, DevOps teams can reduce the complexity of their
 
 Here is the higher level diagram of the system design:
 
-![]()
+![](.img/system-design.png)
 
 
 You should implement 2 microservices:
